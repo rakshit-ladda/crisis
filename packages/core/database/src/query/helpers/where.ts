@@ -336,8 +336,22 @@ const applyOperator = (
       qb.whereRaw(`?? LIKE ?${likeEscapeClause(qb)}`, [column, `${escapeLike(value)}%`]);
       break;
     }
+    case '$startsWithi': {
+      qb.whereRaw(`${fieldLowerFn(qb)} LIKE LOWER(?)${likeEscapeClause(qb)}`, [
+        column,
+        `${escapeLike(value)}%`,
+      ]);
+      break;
+    }
     case '$endsWith': {
       qb.whereRaw(`?? LIKE ?${likeEscapeClause(qb)}`, [column, `%${escapeLike(value)}`]);
+      break;
+    }
+    case '$endsWithi': {
+      qb.whereRaw(`${fieldLowerFn(qb)} LIKE LOWER(?)${likeEscapeClause(qb)}`, [
+        column,
+        `%${escapeLike(value)}`,
+      ]);
       break;
     }
     case '$contains': {
@@ -350,15 +364,18 @@ const applyOperator = (
       break;
     }
 
-    case '$startsWithi':
-    case '$endsWithi':
-    case '$containsi':
-    case '$notContainsi': {
-      const comparator = operator === '$notContainsi' ? 'NOT LIKE' : 'LIKE';
-
-      qb.whereRaw(`${fieldLowerFn(qb)} ${comparator} LOWER(?)${likeEscapeClause(qb)}`, [
+    case '$containsi': {
+      qb.whereRaw(`${fieldLowerFn(qb)} LIKE LOWER(?)${likeEscapeClause(qb)}`, [
         column,
-        insensitiveLikePattern(operator, value),
+        `%${escapeLike(value)}%`,
+      ]);
+      break;
+    }
+
+    case '$notContainsi': {
+      qb.whereRaw(`${fieldLowerFn(qb)} NOT LIKE LOWER(?)${likeEscapeClause(qb)}`, [
+        column,
+        `%${escapeLike(value)}%`,
       ]);
       break;
     }
@@ -464,39 +481,6 @@ const fieldLowerFn = (qb: Knex.QueryBuilder) => {
 const LIKE_SPECIAL_CHARS = '%_\\';
 
 const escapeLike = (value: unknown) => escapeQuery(`${value}`, LIKE_SPECIAL_CHARS);
-
-type LikeAnchor = 'start' | 'end' | 'anywhere';
-
-const LIKE_WILDCARDS: Record<LikeAnchor, [string, string]> = {
-  start: ['', '%'],
-  end: ['%', ''],
-  anywhere: ['%', '%'],
-};
-
-/**
- * Where in the column the term is allowed to sit. Negation and case folding do
- * not move the term, so the `$not` prefix and the `i` suffix are dropped before
- * the operator is matched.
- */
-const likeAnchorOf = (operator: Operator): LikeAnchor => {
-  const base = operator.replace(/^\$(?:not)?/, '').replace(/i$/, '');
-
-  if (base.startsWith('starts')) {
-    return 'start';
-  }
-
-  if (base.startsWith('ends') || base.startsWith('contain')) {
-    return 'end';
-  }
-
-  return 'anywhere';
-};
-
-const insensitiveLikePattern = (operator: Operator, value: unknown) => {
-  const [before, after] = LIKE_WILDCARDS[likeAnchorOf(operator)];
-
-  return `${before}${escapeLike(value)}${after}`;
-};
 
 // SQLite has no default LIKE escape character and requires an explicit clause.
 // PostgreSQL and MySQL both default to backslash, matching helpers/search.ts.
