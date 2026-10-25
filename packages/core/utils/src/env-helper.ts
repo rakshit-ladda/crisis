@@ -61,16 +61,6 @@ function json(key: string, defaultValue?: object) {
   }
 }
 
-const unwrapArrayItem = (item: string) => {
-  const isQuoted = item.startsWith('"') && item.endsWith('"');
-
-  if (isQuoted) {
-    return item.slice(1, -1);
-  }
-
-  return _.trim(item, ' ');
-};
-
 function array(key: string, defaultValue: string[]): string[];
 function array(key: string, defaultValue?: string[] | undefined): string[] | undefined;
 function array(key: string, defaultValue?: string[]): string[] | undefined {
@@ -84,7 +74,9 @@ function array(key: string, defaultValue?: string[]): string[] | undefined {
     value = value.substring(1, value.length - 1);
   }
 
-  return value.split(',').map(unwrapArrayItem);
+  return value.split(',').map((v) => {
+    return _.trim(_.trim(v, ' '), '"');
+  });
 }
 
 function date(key: string, defaultValue: Date): Date;
