@@ -7,26 +7,6 @@ interface Options {
   contentType: Struct.CollectionTypeSchema;
 }
 
-const CREATED_STATUS = 201;
-
-/**
- * Flags the response as a creation and points the client at the new resource.
- */
-const setCreatedResponse = (ctx: Koa.Context, created: unknown) => {
-  if (!isObject(created)) {
-    return;
-  }
-
-  const { documentId } = created as { documentId?: string };
-
-  if (!documentId) {
-    return;
-  }
-
-  ctx.set('Location', `${ctx.request.path}/${documentId}`);
-  ctx.status = CREATED_STATUS;
-};
-
 /**
  *
  * Returns a collection type controller to handle default core-api actions
@@ -87,11 +67,9 @@ const createCollectionTypeController = ({
       });
 
       const sanitizedEntity = await this.sanitizeOutput(entity, ctx);
-      const response = await this.transformResponse(sanitizedEntity);
 
-      setCreatedResponse(ctx, response);
-
-      return response;
+      ctx.status = 201;
+      return this.transformResponse(sanitizedEntity);
     },
 
     /**
