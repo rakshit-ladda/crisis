@@ -1,6 +1,6 @@
 import { isObject } from 'lodash';
 import * as contentTypeUtils from '../../content-types';
-import type { Attribute, Model, RelationOrderingOptions } from '../../types';
+import type { Model, RelationOrderingOptions } from '../../types';
 import type { Visitor } from '../../traverse/factory';
 import { VALID_RELATION_ORDERING_KEYS } from '../../relations';
 
@@ -35,20 +35,6 @@ export default (auth: unknown): Visitor =>
 
     return visitRelationAttribute(auth, visitorOptions, visitorUtils) as unknown as void;
   };
-
-/**
- * Content type a relation points to. Bidirectional relations only carry the target on
- * the side that owns the join, so the schema holding the attribute is used otherwise.
- */
-const getRelationTarget = (schema: Model, attribute: Attribute) => {
-  const { target, inversedBy, mappedBy } = attribute;
-
-  if (inversedBy != null || mappedBy != null) {
-    return schema.uid;
-  }
-
-  return target ?? schema.uid;
-};
 
 const visitRelationAttribute = async (
   auth: unknown,
@@ -212,8 +198,7 @@ const visitRelationAttribute = async (
   };
 
   const handleRegularRelation = async () => {
-    const target = getRelationTarget(schema, attribute);
-    const scopes = ACTIONS_TO_VERIFY.map((action) => `${target}.${action}`);
+    const scopes = ACTIONS_TO_VERIFY.map((action) => `${attribute.target}.${action}`);
     const isAllowed = await hasAccessToSomeScopes(scopes, auth);
 
     if (!isAllowed) {
